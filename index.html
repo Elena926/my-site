@@ -65,8 +65,9 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function fetchCaseDetails() {
-        const loadingEl = document.getElementById('loading');
-        const contentEl = document.getElementById('content');
+        const SUPABASE_URL = 'https://abcdefghijklm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+
         const errorEl = document.getElementById('error-msg');
 
         if (!caseId) {
