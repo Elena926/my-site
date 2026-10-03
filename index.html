@@ -58,16 +58,15 @@
     const urlParams = new URLSearchParams(window.location.search);
     const caseId = urlParams.get('id');
 
-    // 已套用你的原本專案設定，免再手動修改
-    const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    // ⬇️ 請把下面引號內的字，換成你原本專案真正的 Supabase 網址與 Key ⬇️
+    const SUPABASE_URL = 'https://你的Supabase網址.supabase.co';
+    const SUPABASE_ANON_KEY = '你的AnonKey長字串';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function fetchCaseDetails() {
-        const SUPABASE_URL = 'https://abcdefghijklm.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
-
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.getElementById('content');
         const errorEl = document.getElementById('error-msg');
 
         if (!caseId) {
