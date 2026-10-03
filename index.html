@@ -16,11 +16,12 @@
         .item::before { content: ''; width: 8px; height: 8px; background: #007aff; border-radius: 50%; position: absolute; left: -5px; top: 15px; }
         .item-title { font-weight: bold; }
         .item-time { color: #888; font-size: 12px; margin-left: 8px; }
-        .file-list { margin-top: 10px; }
-        .file-item { display: block; padding: 8px 12px; background: #f0f4f8; margin-bottom: 8px; border-radius: 8px; color: #007aff; text-decoration: none; word-break: break-all; }
+        .file-list { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+        .file-item { display: block; padding: 10px 14px; background: #f0f4f8; border-radius: 8px; color: #007aff; text-decoration: none; word-break: break-all; font-weight: 500; }
         .file-item:hover { background: #e4edf5; }
-        #loading { text-align: center; padding: 40px; color: #666; }
-        #error-msg { color: #d9534f; background: #fdf7f7; padding: 12px; border-radius: 8px; display: none; }
+        .media-preview { width: 100%; max-height: 350px; border-radius: 12px; object-fit: cover; margin-top: 6px; background: #000; }
+        #loading { text-align: center; padding: 40px; color: #666; font-size: 16px; }
+        #error-msg { color: #d9534f; background: #fdf7f7; padding: 12px; border-radius: 8px; display: none; line-height: 1.5; }
     </style>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -28,7 +29,7 @@
 <body>
 
 <div class="card">
-    <div id="loading">讀取案件資料中...</div>
+    <div id="loading">⌛ 讀取案件資料中...</div>
     <div id="error-msg"></div>
     <div id="content" style="display: none;">
         <h1 id="case-name">案件載入中...</h1>
@@ -46,19 +47,18 @@
             <!-- 進度列表動態渲染 -->
         </div>
 
-        <h2>相關文件 / 附件</h2>
+        <h2>相關文件 / 媒體附件</h2>
         <div class="file-list" id="file-container">
-            <!-- 檔案連結動態渲染 -->
+            <!-- 檔案與影片動態渲染 -->
         </div>
     </div>
 </div>
 
 <script>
-    // 取得 URL 參數 (例如 ?id=xxxx)
     const urlParams = new URLSearchParams(window.location.search);
     const caseId = urlParams.get('id');
 
-    // 請替換為您的 Supabase 專案設定
+    // 已套用你的原本專案設定，免再手動修改
     const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
     const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
@@ -72,12 +72,12 @@
         if (!caseId) {
             loadingEl.style.display = 'none';
             errorEl.style.display = 'block';
-            errorEl.innerText = '錯誤：未提供案件 ID 參數。';
+            errorEl.innerText = '⚠️ 錯誤：網址未包含案件 ID 參數。請確認掃描的 QR Code 是否完整。';
             return;
         }
 
         try {
-            // 查詢主案件資料
+            // 1. 查詢主案件資料
             const { data: caseData, error: caseError } = await supabaseClient
                 .from('cases')
                 .select('*')
@@ -88,58 +88,97 @@
 
             // 渲染基本資訊
             document.getElementById('case-name').innerText = caseData.title || caseData.name || '未命名案件';
-            document.getElementById('case-date').innerText = '建立時間：' + new Date(caseData.created_at).toLocaleString();
+            document.getElementById('case-date').innerText = '建立時間：' + (caseData.created_at ? new Date(caseData.created_at).toLocaleString('zh-TW') : '-');
             document.getElementById('client-name').innerText = caseData.client_name || '-';
             document.getElementById('case-status').innerText = caseData.status || '處理中';
             document.getElementById('case-desc').innerText = caseData.description || '無';
 
-            // 查詢歷史進度記錄 (如有此表格)
-            const { data: historyData } = await supabaseClient
-                .from('case_history')
-                .select('*')
-                .eq('case_id', caseId)
-                .order('created_at', { ascending: false });
+            // 2. 查詢歷史進度記錄
+            try {
+                const { data: historyData } = await supabaseClient
+                    .from('case_history')
+                    .select('*')
+                    .eq('case_id', caseId)
+                    .order('created_at', { ascending: false });
 
-            const timelineEl = document.getElementById('timeline-list');
-            timelineEl.innerHTML = '';
-            if (historyData && historyData.length > 0) {
-                historyData.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'item';
-                    div.innerHTML = `
-                        <div>
-                            <span class="item-title">${item.action || item.status}</span>
-                            <span class="item-time">${new Date(item.created_at).toLocaleDateString()}</span>
-                            <div>${item.note || ''}</div>
-                        </div>
-                    `;
-                    timelineEl.appendChild(div);
-                });
-            } else {
-                timelineEl.innerHTML = '<div style="color:#888;">尚無歷程紀錄</div>';
+                const timelineEl = document.getElementById('timeline-list');
+                timelineEl.innerHTML = '';
+                if (historyData && historyData.length > 0) {
+                    historyData.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'item';
+                        div.innerHTML = `
+                            <div>
+                                <span class="item-title">${item.action || item.status || '紀錄'}</span>
+                                <span class="item-time">${item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</span>
+                                <div>${item.note || ''}</div>
+                            </div>
+                        `;
+                        timelineEl.appendChild(div);
+                    });
+                } else {
+                    timelineEl.innerHTML = '<div style="color:#888;">尚無歷程紀錄</div>';
+                }
+            } catch (hErr) {
+                console.warn('歷程讀取跳過:', hErr);
             }
 
-            // 查詢附件檔案 (如有儲存 Storage 連結)
-            const { data: filesData } = await supabaseClient
-                .from('case_files')
-                .select('*')
-                .eq('case_id', caseId);
+            // 3. 查詢附件與影片
+            try {
+                const { data: filesData } = await supabaseClient
+                    .from('case_files')
+                    .select('*')
+                    .eq('case_id', caseId);
 
-            const fileContainer = document.getElementById('file-container');
-            fileContainer.innerHTML = '';
-            if (filesData && filesData.length > 0) {
-                filesData.forEach(file => {
-                    const a = document.createElement('a');
-                    a.className = 'file-item';
-                    a.href = file.file_url;
-                    a.target = '_blank';
-                    a.innerText = '📄 ' + (file.file_name || '檢視檔案/PDF');
-                    fileContainer.appendChild(a);
-                });
-            } else {
-                fileContainer.innerHTML = '<div style="color:#888;">尚無附件檔案</div>';
+                const fileContainer = document.getElementById('file-container');
+                fileContainer.innerHTML = '';
+
+                if (filesData && filesData.length > 0) {
+                    filesData.forEach(file => {
+                        const url = file.file_url || '';
+                        const name = file.file_name || '附件檔案';
+                        const lowerUrl = url.toLowerCase();
+
+                        // 判斷是否為影片
+                        if (lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.mov') || lowerUrl.endsWith('.webm')) {
+                            const videoBox = document.createElement('div');
+                            videoBox.innerHTML = `
+                                <div style="font-size:14px; font-weight:bold; margin-bottom:4px;">🎬 影片附件：${name}</div>
+                                <video class="media-preview" controls playsinline preload="metadata">
+                                    <source src="${url}" type="video/mp4">
+                                    <source src="${url}" type="video/quicktime">
+                                    您的瀏覽器不支援此影片播放。
+                                </video>
+                            `;
+                            fileContainer.appendChild(videoBox);
+                        } 
+                        // 判斷是否為圖片
+                        else if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp')) {
+                            const imgBox = document.createElement('div');
+                            imgBox.innerHTML = `
+                                <div style="font-size:14px; font-weight:bold; margin-bottom:4px;">🖼️ 照片附件：${name}</div>
+                                <img src="${url}" class="media-preview" alt="${name}">
+                            `;
+                            fileContainer.appendChild(imgBox);
+                        } 
+                        // 一般 PDF 或其他文件
+                        else {
+                            const a = document.createElement('a');
+                            a.className = 'file-item';
+                            a.href = url;
+                            a.target = '_blank';
+                            a.innerText = '📄 ' + name;
+                            fileContainer.appendChild(a);
+                        }
+                    });
+                } else {
+                    fileContainer.innerHTML = '<div style="color:#888;">尚無附件或影片</div>';
+                }
+            } catch (fErr) {
+                console.warn('附件讀取跳過:', fErr);
             }
 
+            // 完成載入顯示主內容
             loadingEl.style.display = 'none';
             contentEl.style.display = 'block';
 
